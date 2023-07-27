@@ -61,9 +61,10 @@ public:
     logicValue controllingValue;
     bool inversionParity; //High means inversion is present at output
     int numInputs,numOutputs;
-    list<gate> ipList;
-    list<gate> opList;
+    list<gate*> ipList;
+    list<gate*> opList;
     logicValue value;
+    vector<logicValue> inputValues;
     int level;
 
     gate(
@@ -92,21 +93,168 @@ public:
 
 };
 
-void createNetlist(list<gate> gateList){
+void createNetlist(list<gate> gateList, vector<vector<int>> adj){
     //This will make all the connections
+    /*
+    Things to fill here:
+        ipList
+        opList
+        
+    */
+    int i=0;
+    for(auto it:gateList){
+        //opList & ipList
+        //Find the pointers to gate nodes with the nodeNumbers specified in adj matrix
+
+
+        for(int j=0 ; j<adj[i].size() ; j++){ //Traverse through the row of the adjacency matrix
+            for(auto it1:gateList){
+                if(it1.nodeNumber==adj[i][j]){ //Found the gateNode with the nodeNumber 
+                    it.opList.push_back(&it1);
+                    it1.ipList.push_back(&it); //Takes care of ipList
+                }
+                else continue;
+            }
+
+        }
+
+       
+    }
+
 
 }
 
-void levalize(){
+int levalize(list<gate> gateList){
+    //Go over each node in the gateList and iterate over its ipList to find the maximum level value and the level of the current node.
+    int totalLevels=0;
+    for(auto it:gateList){
+        int maxLevel=0;
+        for(auto it1:it.ipList){
+            if((*it1).level>maxLevel){
+                maxLevel=(*it1).level;
+            }
+            //Read the inputs also
+            it.inputValues.push_back(it1->value);
+        }
+        it.level=1+maxLevel;
+        if(maxLevel>totalLevels)totalLevels=maxLevel;
+    }
+
+    return totalLevels;
 
 }
 
-void evaluate(){
-
+void evaluate(list<gate> gateList,int totalLevels){
+    //Returns the final output value
+    int eValue=UNKNOWN;
+    int countHIGH=0;
+    bool foundUnknown=false;
+    for(int i=1;i<totalLevels;i++){
+        for(auto it:gateList){
+            if(it.level==i){ //If you found a node in the level to be computed 
+                switch(it.gt){
+                    case And:
+                            eValue=HIGH;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    break;
+                                }
+                                else if(it1==LOW){
+                                    it.value=LOW;
+                                }
+                            }
+                            break;
+                    case Or:
+                            eValue=LOW;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    break;
+                                }
+                                else if(it1==HIGH){
+                                    it.value=HIGH;
+                                }
+                            }
+                            break;
+                    case Not:
+                            eValue=LOW;
+                            if(it.inputValues[0]==UNKNOWN) it.value=UNKNOWN;
+                            else if(it.inputValues[0]==LOW) it.value=HIGH;
+                            else it.value=LOW;
+                            break;
+                    case Nand:
+                            eValue=LOW;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    break;
+                                }
+                                else if(it1==LOW){
+                                    it.value=HIGH;
+                                }
+                            }
+                            break;
+                    case Nor:
+                            eValue=HIGH;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    break;
+                                }
+                                else if(it1==HIGH){
+                                    it.value=LOW;
+                                }
+                            }
+                            break;
+                    case Xor:
+                            eValue=HIGH;
+                            foundUnknown=false;
+                            countHIGH=0;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    foundUnknown=true;
+                                    break;
+                                }
+                                if(it1==HIGH){
+                                    countHIGH++;
+                                }                                
+                            }
+                            if(!foundUnknown){
+                                if(countHIGH%2==0)it.value=LOW;
+                                else it.value=HIGH;
+                            }
+                            break;
+                    case Xnor:
+                            eValue=HIGH;
+                            foundUnknown=false;
+                            countHIGH=0;
+                            for(auto it1:it.inputValues){
+                                if(it1==UNKNOWN){
+                                    it.value=UNKNOWN;
+                                    foundUnknown=true;
+                                    break;
+                                }
+                                if(it1==HIGH){
+                                    countHIGH++;
+                                }                                
+                            }
+                            if(!foundUnknown){
+                                if(countHIGH%2==0)it.value=HIGH;
+                                else it.value=LOW;
+                            }
+                            break;
+                }
+            }
+        }
+    }
 }
+
+
 
 int main(){
-    
+    int totalLevels;
     //Lets hardcode a and gate followed by a not gate
     //All we need to start simulation is the primary input list
     //We will store the primary inputs in form of gates only
@@ -119,11 +267,33 @@ int main(){
     //Gate declaration
     gate a1(2,And,LOW,false,2,1,UNKNOWN,-1);
     gate n1(3,Not,LOW,false,1,1,UNKNOWN,-1);
-
+ 
     
     //List of all the gates
     list<gate> gateList={ip1,ip2,a1,n1};
     
+
+    int n,m;
+    //n=num of nodes
+    //m=num of edges
+
+    //Here number of nodes is 4(2 inputs + 2 gates) and number of edges is 3
+    n=4;
+    m=3;
+
+    vector<vector<int>> adj;
+
+    adj.push_back({2});
+    adj.push_back({2});
+    adj.push_back({3});
+    adj.push_back({-1});
+
+    createNetlist(gateList, adj);
+    totalLevels=levalize(gateList);
+    evaluate(gateList,totalLevels);
+    
+    
+    cout<<ip1.value<<endl;
 
     return 0;   
 }
