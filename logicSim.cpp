@@ -4,6 +4,7 @@ using namespace std;
 
 /*
 Logic Simulation:
+Logic Simulation can be of two types:
 1. Compiled Code Simulation
     We use 3 value simulation 0,1,x
     Evaluate a gate when all inputs are available irrespective of change in input value
@@ -20,9 +21,10 @@ Logic Simulation:
     and simulate level by level
     Level of any gate = 1+max(level of input)
     Level of primary input = 0
+    But here we evaluate only those gates whose input values have changed.
 
 
-We represent circuit as Directed Acyclic Graph.
+We can represent circuit as Directed Acyclic Graph.
 Every gate is a node.
 interconnect is an edge.
 
@@ -39,9 +41,9 @@ Every node must have
 10. Level
 
 Steps:
+0. Make a Directed Acyclic Graph of the nodes(gates) 
 1. Levelize
-2. Sort the gates level by level 
-3. Evaluate the gates
+2. Evaluate the gates level by level
 
 
 
@@ -51,8 +53,9 @@ evaluate a gate when all inputs are available
 
 */
 
-enum gateType {Input,And, Or, Not, Nand, Nor, Xor, Xnor};
-enum logicValue {LOW, HIGH, UNKNOWN};
+
+enum gateType {Input,And, Or, Not, Nand, Nor, Xor, Xnor}; //Input will also be a node specified by gateType Input
+enum logicValue {LOW, HIGH, UNKNOWN}; //Types of Inputs
 
 class gate {
 public:
@@ -67,6 +70,7 @@ public:
     vector<logicValue> inputValues;
     int level;
 
+    //Constructor for Initialisation
     gate(
         int nodeNumber,
         gateType gt,
@@ -74,8 +78,6 @@ public:
         bool inversionParity,
         int numInputs,
         int numOutputs,
-        // list<gate> ipList,
-        // list<gate> opList,
         logicValue value,
         int level
     ){
@@ -85,8 +87,6 @@ public:
         this->inversionParity=inversionParity;
         this->numInputs=numInputs;
         this->numOutputs=numOutputs;
-        // this->ipList=ipList;
-        // this->opList=opList;
         this->value=value;
         this->level=level;
     }
@@ -99,7 +99,7 @@ public:
 
 
 
-int levalize(list<gate>& gateList){
+int levalize(list<gate>& gateList){ //Function to find the level of each gate in netlist
     //Go over each node in the gateList and iterate over its ipList to find the maximum level value and the level of the current node.
     int totalLevels=0;
     for(list<gate>::iterator it=gateList.begin(); it!=gateList.end(); it++){
@@ -117,23 +117,17 @@ int levalize(list<gate>& gateList){
         // (*it).level=1+maxLevel;
         //if(notInputLayer)cout<<"level of node"<<it->nodeNumber<<"="<<it->level<<endl;
         //if(notInputLayer)cout<<(*it).level<<endl;
-
         // cout<<"maxlevel= "<<maxLevel<<" TotalLevel= "<<totalLevels<<endl;
         if(maxLevel>=totalLevels){
             totalLevels=1+maxLevel;
             // cout<<"Changed totalLevel to: "<<totalLevels<<endl;
         }
-
-        
-        
     }
     // cout<<"Total Levels:"<<totalLevels<<endl;
     return totalLevels;
-
 }
 
-void evaluate(list<gate>& gateList,int totalLevels){
-    //Returns the final output value
+void evaluate(list<gate>& gateList,int totalLevels){//Evaluates values of each gate in netlist
     logicValue eValue=UNKNOWN;
     int countHIGH=0;
     bool foundUnknown=false;
@@ -141,15 +135,13 @@ void evaluate(list<gate>& gateList,int totalLevels){
         //cout<<i<<endl;
         for(auto it=gateList.begin(); it!=gateList.end(); it++){
             if(it->level==i){ //If you found a node in the level to be computed 
-
                 //Get input values form preceding level
                 for(auto it1=it->ipList.begin(); it1!=it->ipList.end(); it1++){
                      //Read the inputs also
                     it->inputValues.push_back((*it1)->value); //This Should not be here
                     //cout<<"Pushed value:"<<(*it1)->value<<" as input to node"<<it->nodeNumber<<endl;
                 }
-
-                switch(it->gt){
+                switch(it->gt){ //What is the type of gate?
                     case And:                            
                             eValue=HIGH;
                             foundUnknown=false;
@@ -265,8 +257,7 @@ void evaluate(list<gate>& gateList,int totalLevels){
     }
 }
 
-void createNetlist(list<gate>& gateList, vector<vector<int>> adj){
-    //This will make all the connections
+void createNetlist(list<gate>& gateList, vector<vector<int>> adj){//Function to make all the connections
     /*
     Things to fill here:
         ipList, opList
@@ -296,12 +287,8 @@ void createNetlist(list<gate>& gateList, vector<vector<int>> adj){
 
 int main(){
     int totalLevels=0;
-    //Lets hardcode a and gate followed by a not gate
-    //All we need to start simulation is the primary input list
-    //We will store the primary inputs in form of gates only
-    
     /*
-    gate Constructor:
+    gate Constructor for reference:
 
         int nodeNumber,
         gateType gt,
@@ -331,14 +318,6 @@ int main(){
     list<gate> gateList={ip1,ip2,na1,na2,na3,na4};
     
 
-    int n,m;
-    //n=num of nodes
-    //m=num of edges
-
-    //Here number of nodes is 4(2 inputs + 2 gates) and number of edges is 3
-    n=4;
-    m=3;
-
     vector<vector<int>> adj;
 
     //Adjacency matrix for implementation of xor gate using 4 nand gates
@@ -362,10 +341,6 @@ int main(){
     }
   
     // cout<<totalLevels<<endl;
-
-    
-    
-
     return 0;   
 }
 
