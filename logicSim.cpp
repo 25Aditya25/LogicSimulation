@@ -52,7 +52,7 @@ evaluate a gate when all inputs are available
 */
 
 enum gateType {Input,And, Or, Not, Nand, Nor, Xor, Xnor};
-enum logicValue {HIGH, LOW, UNKNOWN};
+enum logicValue {LOW, HIGH, UNKNOWN};
 
 class gate {
 public:
@@ -113,17 +113,21 @@ int levalize(list<gate>& gateList){
         }
         // cout<<"maxLevel="<<maxLevel<<endl;
         if(notInputLayer) (*it).changeLevel(1+maxLevel);
+        // cout<<"nodeNumber= "<<it->nodeNumber<<" Changed Level to "<<(1+maxLevel)<<endl;
         // (*it).level=1+maxLevel;
         //if(notInputLayer)cout<<"level of node"<<it->nodeNumber<<"="<<it->level<<endl;
         //if(notInputLayer)cout<<(*it).level<<endl;
 
-
-        if(maxLevel>totalLevels)totalLevels=1+maxLevel;
+        // cout<<"maxlevel= "<<maxLevel<<" TotalLevel= "<<totalLevels<<endl;
+        if(maxLevel>=totalLevels){
+            totalLevels=1+maxLevel;
+            // cout<<"Changed totalLevel to: "<<totalLevels<<endl;
+        }
 
         
         
     }
-    //cout<<"Total Levels:"<<totalLevels<<endl;
+    // cout<<"Total Levels:"<<totalLevels<<endl;
     return totalLevels;
 
 }
@@ -296,17 +300,35 @@ int main(){
     //All we need to start simulation is the primary input list
     //We will store the primary inputs in form of gates only
     
-    //Primary Inputs
-    gate ip1(0,Input,HIGH,false,0,1,UNKNOWN,0);
-    gate ip2(1,Input,HIGH,false,0,1,HIGH,0);
+    /*
+    gate Constructor:
 
-    //Gate declaration
-    gate a1(2,And,LOW,false,2,1,UNKNOWN,1);
-    gate n1(3,Not,LOW,false,1,1,UNKNOWN,2);
- 
+        int nodeNumber,
+        gateType gt,
+        logicValue controllingValue,
+        bool inversionParity,
+        int numInputs,
+        int numOutputs,
+        logicValue value,
+        int level
+    */
+
+    //Primary Inputs
+    gate ip1(0,Input,HIGH,false,0,1,LOW,0);
+    gate ip2(1,Input,HIGH,false,0,1,LOW,0);
+
+    //Gate declaration for and gate followed by not gate
+    // gate a1(2,And,LOW,false,2,1,UNKNOWN,1);
+    // gate n1(3,Not,LOW,false,1,1,UNKNOWN,2);
     
+    //Gate Declaration for implementation of xor gate using 4 nand gates
+    gate na1(2,Nand,LOW,false,2,1,UNKNOWN,1);
+    gate na2(3,Nand,LOW,false,1,1,UNKNOWN,2);
+    gate na3(4,Nand,LOW,false,1,1,UNKNOWN,2);
+    gate na4(5,Nand,LOW,false,1,1,UNKNOWN,2);
+
     //List of all the gates
-    list<gate> gateList={ip1,ip2,a1,n1};
+    list<gate> gateList={ip1,ip2,na1,na2,na3,na4};
     
 
     int n,m;
@@ -319,11 +341,13 @@ int main(){
 
     vector<vector<int>> adj;
 
-    adj.push_back({2});
-    adj.push_back({2});
-    adj.push_back({3});
-    adj.push_back({-1});
-
+    //Adjacency matrix for implementation of xor gate using 4 nand gates
+    adj.push_back({2,3}); //input1
+    adj.push_back({2,4}); //input2
+    adj.push_back({3,4}); //nand1
+    adj.push_back({5});//nand2
+    adj.push_back({5}); //nand3
+    adj.push_back({-1});//nand4
     
     createNetlist(gateList, adj);
     
@@ -331,13 +355,13 @@ int main(){
     totalLevels=levalize(gateList); //We get the input values of the gates and the levels
     evaluate(gateList,totalLevels);
     
-
-
     auto it=gateList.begin();
-    it++;
-    it++;
-    // it++;
-    cout<<"Output value of node "<<it->nodeNumber<<" is "<<it->value<<" and level is "<<it->level<<endl;
+    for(int i=0;i<gateList.size();i++){        
+        cout<<"Output value of node "<<it->nodeNumber<<" is "<<it->value<<" and level is "<<it->level<<endl;
+        it++;
+    }
+  
+    // cout<<totalLevels<<endl;
 
     
     
