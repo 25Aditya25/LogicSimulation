@@ -1,7 +1,7 @@
 Logic Simulation:
 Logic Simulation can be of two types:
 1. Compiled Code Simulation:
-    We use 3 value simulation 0,1,x
+    Here we use 3 value simulation 0,1,x
     Evaluate a gate when all inputs are available irrespective of change in input value
     Here we may end up doing same evaluation multiple number of times
 
