@@ -1,6 +1,6 @@
 Logic Simulation:
 Logic Simulation can be of two types:
-1. Compiled Code Simulation
+1. Compiled Code Simulation:
     We use 3 value simulation 0,1,x
     Evaluate a gate when all inputs are available irrespective of change in input value
     Here we may end up doing same evaluation multiple number of times
@@ -10,7 +10,7 @@ Logic Simulation can be of two types:
     Level of any gate = 1+max(level of input)
     Level of primary input = 0
 
-2. Event driven simulation
+2. Event driven simulation:
     Here we do evaluation only when input of a gate changes.
     Here also we need to Levelize the circuit i.e. give level to gate and evaluate level by level
     and simulate level by level
