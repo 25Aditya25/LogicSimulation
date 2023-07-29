@@ -61,8 +61,8 @@ public:
     logicValue controllingValue;
     bool inversionParity; //High means inversion is present at output
     int numInputs,numOutputs;
-    list<gate*> ipList;
-    list<gate*> opList;
+    vector<gate*> ipList;
+    vector<gate*> opList;
     logicValue value;
     vector<logicValue> inputValues;
     int level;
@@ -91,159 +91,169 @@ public:
         this->level=level;
     }
 
+    void changeLevel(int newLevel){
+        this->level=newLevel;
+    }
+
 };
 
-void createNetlist(list<gate> gateList, vector<vector<int>> adj){
-    //This will make all the connections
-    /*
-    Things to fill here:
-        ipList
-        opList
-        
-    */
-    int i=0;
-    for(auto it:gateList){
-        //opList & ipList
-        //Find the pointers to gate nodes with the nodeNumbers specified in adj matrix
 
 
-        for(int j=0 ; j<adj[i].size() ; j++){ //Traverse through the row of the adjacency matrix
-            for(auto it1:gateList){
-                if(it1.nodeNumber==adj[i][j]){ //Found the gateNode with the nodeNumber 
-                    it.opList.push_back(&it1);
-                    it1.ipList.push_back(&it); //Takes care of ipList
-                }
-                else continue;
-            }
-
-        }
-
-       
-    }
-
-
-}
-
-int levalize(list<gate> gateList){
+int levalize(list<gate>& gateList){
     //Go over each node in the gateList and iterate over its ipList to find the maximum level value and the level of the current node.
     int totalLevels=0;
-    for(auto it:gateList){
-        int maxLevel=0;
-        for(auto it1:it.ipList){
-            if((*it1).level>maxLevel){
-                maxLevel=(*it1).level;
-            }
-            //Read the inputs also
-            it.inputValues.push_back(it1->value);
+    for(list<gate>::iterator it=gateList.begin(); it!=gateList.end(); it++){
+        int maxLevel=-1;
+        bool notInputLayer=false;
+        for(auto it1=it->ipList.begin(); it1!=it->ipList.end(); it1++){
+            if((*&(*it1))->level>maxLevel){
+                maxLevel=(*&(*it1))->level;
+                notInputLayer=true;
+            }           
         }
-        it.level=1+maxLevel;
-        if(maxLevel>totalLevels)totalLevels=maxLevel;
-    }
+        // cout<<"maxLevel="<<maxLevel<<endl;
+        if(notInputLayer) (*it).changeLevel(1+maxLevel);
+        // (*it).level=1+maxLevel;
+        //if(notInputLayer)cout<<"level of node"<<it->nodeNumber<<"="<<it->level<<endl;
+        //if(notInputLayer)cout<<(*it).level<<endl;
 
+
+        if(maxLevel>totalLevels)totalLevels=1+maxLevel;
+
+        
+        
+    }
+    //cout<<"Total Levels:"<<totalLevels<<endl;
     return totalLevels;
 
 }
 
-void evaluate(list<gate> gateList,int totalLevels){
+void evaluate(list<gate>& gateList,int totalLevels){
     //Returns the final output value
-    int eValue=UNKNOWN;
+    logicValue eValue=UNKNOWN;
     int countHIGH=0;
     bool foundUnknown=false;
-    for(int i=1;i<totalLevels;i++){
-        for(auto it:gateList){
-            if(it.level==i){ //If you found a node in the level to be computed 
-                switch(it.gt){
-                    case And:
+    for(int i=1;i<=totalLevels;i++){
+        //cout<<i<<endl;
+        for(auto it=gateList.begin(); it!=gateList.end(); it++){
+            if(it->level==i){ //If you found a node in the level to be computed 
+
+                //Get input values form preceding level
+                for(auto it1=it->ipList.begin(); it1!=it->ipList.end(); it1++){
+                     //Read the inputs also
+                    it->inputValues.push_back((*it1)->value); //This Should not be here
+                    //cout<<"Pushed value:"<<(*it1)->value<<" as input to node"<<it->nodeNumber<<endl;
+                }
+
+                switch(it->gt){
+                    case And:                            
                             eValue=HIGH;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            foundUnknown=false;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){      
+                                    // cout<<"foundUnknown"<<endl;                             
+                                    it->value=UNKNOWN;
+                                    foundUnknown=true;
                                     break;
                                 }
-                                else if(it1==LOW){
-                                    it.value=LOW;
+                                else if(*it1==LOW){                                    
+                                    eValue=LOW;
                                 }
                             }
+                            // cout<<"Here"<<endl;
+                            if(!foundUnknown)it->value=eValue;                        
                             break;
                     case Or:
                             eValue=LOW;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            foundUnknown=false;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){
+                                    it->value=UNKNOWN;
+                                    foundUnknown=true;
                                     break;
                                 }
-                                else if(it1==HIGH){
-                                    it.value=HIGH;
+                                else if(*it1==HIGH){
+                                    eValue=HIGH;
                                 }
                             }
+                            if(!foundUnknown)it->value=eValue;
                             break;
                     case Not:
                             eValue=LOW;
-                            if(it.inputValues[0]==UNKNOWN) it.value=UNKNOWN;
-                            else if(it.inputValues[0]==LOW) it.value=HIGH;
-                            else it.value=LOW;
+                            if(*(it->inputValues.begin())==UNKNOWN) eValue=UNKNOWN;
+                            else if(*(it->inputValues.begin())==LOW) eValue=HIGH;
+                            else eValue=LOW;
+                            it->value=eValue;
                             break;
                     case Nand:
                             eValue=LOW;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            foundUnknown=false;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){
+                                    it->value=UNKNOWN;
+                                    foundUnknown=true;
                                     break;
                                 }
-                                else if(it1==LOW){
-                                    it.value=HIGH;
+                                else if(*it1==LOW){
+                                    eValue=HIGH;
                                 }
                             }
+                            if(!foundUnknown)it->value=eValue;
                             break;
                     case Nor:
                             eValue=HIGH;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            foundUnknown=false;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){
+                                    it->value=UNKNOWN;
+                                    foundUnknown=true;
                                     break;
                                 }
-                                else if(it1==HIGH){
-                                    it.value=LOW;
+                                else if(*it1==HIGH){
+                                    eValue=LOW;
                                 }
                             }
+                            if(!foundUnknown)it->value=eValue;
                             break;
                     case Xor:
                             eValue=HIGH;
                             foundUnknown=false;
                             countHIGH=0;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){
+                                    it->value=UNKNOWN;
                                     foundUnknown=true;
                                     break;
                                 }
-                                if(it1==HIGH){
+                                if(*it1==HIGH){
                                     countHIGH++;
                                 }                                
                             }
                             if(!foundUnknown){
-                                if(countHIGH%2==0)it.value=LOW;
-                                else it.value=HIGH;
+                                if(countHIGH%2==0)eValue=LOW;
+                                else eValue=HIGH;
                             }
+                            it->value=eValue;
                             break;
                     case Xnor:
                             eValue=HIGH;
                             foundUnknown=false;
                             countHIGH=0;
-                            for(auto it1:it.inputValues){
-                                if(it1==UNKNOWN){
-                                    it.value=UNKNOWN;
+                            for(auto it1=it->inputValues.begin(); it1!=it->inputValues.end(); it1++){
+                                if(*it1==UNKNOWN){
+                                    it->value=UNKNOWN;
                                     foundUnknown=true;
                                     break;
                                 }
-                                if(it1==HIGH){
+                                if(*it1==HIGH){
                                     countHIGH++;
                                 }                                
                             }
                             if(!foundUnknown){
-                                if(countHIGH%2==0)it.value=HIGH;
-                                else it.value=LOW;
+                                if(countHIGH%2==0)eValue=HIGH;
+                                else eValue=LOW;
                             }
+                            it->value=eValue;
                             break;
                 }
             }
@@ -251,22 +261,48 @@ void evaluate(list<gate> gateList,int totalLevels){
     }
 }
 
-
+void createNetlist(list<gate>& gateList, vector<vector<int>> adj){
+    //This will make all the connections
+    /*
+    Things to fill here:
+        ipList, opList
+    */
+    int i=0;
+    for(auto it=gateList.begin(); it!=gateList.end(); it++){
+        //opList & ipList
+        //Find the pointers to gate nodes with the nodeNumbers specified in adj matrix
+        // auto it = v.begin() ; it < v.end(); it++
+        for(int j=0 ; j<adj[i].size() ; j++){ //Traverse through the row of the adjacency matrix
+            for(auto it1=gateList.begin(); it1!=gateList.end(); it1++){
+                if(it1->nodeNumber==adj[i][j]){ //Found the gateNode with the nodeNumber 
+                    // cout<<"This Happened"<<endl;
+                    // cout<<it1->nodeNumber<<" "<<it->nodeNumber<<endl;
+                    it->opList.push_back(&*it1);
+                    // it->opList->push_back(&it1);                    
+                    it1->ipList.push_back(&*it); //Takes care of ipList
+                    //cout<<it.opList.front()->nodeNumber<<" "<<it1.ipList.front()->nodeNumber<<endl;
+                }
+                // else continue;
+            }
+        }       
+        i=i+1;
+    }
+    // cout<<gateList.back().level<<endl;
+}
 
 int main(){
-    int totalLevels;
+    int totalLevels=0;
     //Lets hardcode a and gate followed by a not gate
     //All we need to start simulation is the primary input list
     //We will store the primary inputs in form of gates only
     
-
     //Primary Inputs
-    gate ip1(0,Input,HIGH,false,0,1,HIGH,0);
+    gate ip1(0,Input,HIGH,false,0,1,UNKNOWN,0);
     gate ip2(1,Input,HIGH,false,0,1,HIGH,0);
 
     //Gate declaration
-    gate a1(2,And,LOW,false,2,1,UNKNOWN,-1);
-    gate n1(3,Not,LOW,false,1,1,UNKNOWN,-1);
+    gate a1(2,And,LOW,false,2,1,UNKNOWN,1);
+    gate n1(3,Not,LOW,false,1,1,UNKNOWN,2);
  
     
     //List of all the gates
@@ -288,12 +324,23 @@ int main(){
     adj.push_back({3});
     adj.push_back({-1});
 
+    
     createNetlist(gateList, adj);
-    totalLevels=levalize(gateList);
+    
+    
+    totalLevels=levalize(gateList); //We get the input values of the gates and the levels
     evaluate(gateList,totalLevels);
     
+
+
+    auto it=gateList.begin();
+    it++;
+    it++;
+    // it++;
+    cout<<"Output value of node "<<it->nodeNumber<<" is "<<it->value<<" and level is "<<it->level<<endl;
+
     
-    cout<<ip1.value<<endl;
+    
 
     return 0;   
 }
